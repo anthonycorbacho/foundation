@@ -1,8 +1,8 @@
 version: 2
-  jobs:
-    build:
-      docker:
-        - image: circleci/goland:1.13
-      steps:
-        - checkout
-        - run: make test
+jobs:
+  build:
+    docker:
+      - image: circleci/goland:1.13
+    steps:
+      - checkout
+      - run: make test
