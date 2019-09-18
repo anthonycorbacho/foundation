@@ -9,5 +9,5 @@ jobs:
           name: Install and run linter on go files
           command: make tools && make linter
       - run:
-        name: run unit tests
-        command: make test
+          name: run unit tests
+          command: make test
