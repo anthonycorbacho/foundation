@@ -1,0 +1,80 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"net/url"
+	"time"
+
+	"github.com/go-sql-driver/mysql"
+
+	"contrib.go.opencensus.io/integrations/ocsql"
+	"github.com/jmoiron/sqlx"
+	"go.opencensus.io/trace"
+
+	// MySQL driver
+	_ "github.com/go-sql-driver/mysql"
+	// Postgres driver
+	_ "github.com/lib/pq"
+)
+
+// Open knows how to open a database connection based on the configuration.
+func Open(driver, connection string) (*sqlx.DB, func(), error) {
+	// verify if the driver is supported and valid.
+	switch driver {
+	case "mysql":
+		if _, err := mysql.ParseDSN(connection); err != nil {
+			return nil, nil, errors.New("invalid mysql connection string")
+		}
+		break
+
+	case "postgres":
+		if _, err := url.Parse(connection); err != nil {
+			return nil, nil, errors.New("invalid postgres connection string")
+		}
+		break
+
+	default:
+		return nil, nil, errors.New("unsupported database driver: " + driver)
+
+	}
+
+	ocsql.RegisterAllViews()
+	// Register our ocsql wrapper for the provided database driver.
+	driverName, err := ocsql.Register(driver, ocsql.WithAllTraceOptions())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Connect to a mysql database using the ocsql driver wrapper.
+	db, err := sql.Open(driverName, connection)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Record DB stats every 5 seconds until we exit.
+	stop := ocsql.RecordStats(db, 5*time.Second)
+	dbx := sqlx.NewDb(db, driver)
+
+	close := func() {
+		stop()
+		_ = dbx.Close() // explicitly ignore error.
+	}
+
+	return dbx, close, nil
+}
+
+// StatusCheck returns nil if it can successfully talk to the database. It
+// returns a non-nil error otherwise.
+func StatusCheck(ctx context.Context, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "database.StatusCheck")
+	defer span.End()
+
+	// Run a simple query to determine connectivity. The db has a "Ping" method
+	// but it can false-positive when it was previously able to talk to the
+	// database but the database has since gone away. Running this query forces a
+	// round trip to the database.
+	const q = `SELECT true`
+	var tmp bool
+	return db.QueryRowContext(ctx, q).Scan(&tmp)
+}

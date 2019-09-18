@@ -1,0 +1,19 @@
+version: '3.3'
+
+services:
+  mysql:
+    container_name: "foundation-mysql"
+    image: mysql:8.0.17
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_ROOT_PASSWORD: secret1234
+      MYSQL_DATABASE: db_test
+      MYSQL_USER: foundation
+      MYSQL_PASSWORD: secret1234
+      LANG: C.UTF-8
+    entrypoint: ['/entrypoint.sh', '--default-authentication-plugin=mysql_native_password']
+    security_opt:
+      - seccomp:unconfined
