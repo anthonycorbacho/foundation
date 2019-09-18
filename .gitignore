@@ -1,0 +1,28 @@
+### macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+### Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+### IDE Goland
+.idea/
+
+### IDE Code
+.vscode
+
+### IDE Emacs
+*~
+\#*\#
+.\#*
