@@ -3,8 +3,11 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/url"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 
 	"contrib.go.opencensus.io/integrations/ocsql"
 	"github.com/jmoiron/sqlx"
@@ -16,53 +19,42 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Config is the required properties to use the database.
-type Config struct {
-	User       string
-	Password   string
-	Host       string
-	Name       string
-	DisableTLS bool
-}
-
 // Open knows how to open a database connection based on the configuration.
-func Open(cfg Config) (*sqlx.DB, func(), error) {
+func Open(driver, connection string) (*sqlx.DB, func(), error) {
+	// verify if the driver is supported and valid.
+	switch driver {
+	case "mysql":
+		if _, err := mysql.ParseDSN(connection); err != nil {
+			return nil, nil, errors.New("invalid mysql connection string")
+		}
+		break
 
-	// Define SSL mode.
-	sslMode := "require"
-	if cfg.DisableTLS {
-		sslMode = "disable"
-	}
+	case "postgres":
+		if _, err := url.Parse(connection); err != nil {
+			return nil, nil, errors.New("invalid postgres connection string")
+		}
+		break
 
-	// Query parameters.
-	q := make(url.Values)
-	q.Set("sslmode", sslMode)
-	q.Set("timezone", "utc")
+	default:
+		return nil, nil, errors.New("unsupported database driver: " + driver)
 
-	// Construct url.
-	u := url.URL{
-		Scheme:   cfg.Name,
-		User:     url.UserPassword(cfg.User, cfg.Password),
-		Host:     cfg.Host,
-		Path:     cfg.Name,
-		RawQuery: q.Encode(),
 	}
 
 	ocsql.RegisterAllViews()
 	// Register our ocsql wrapper for the provided database driver.
-	driverName, err := ocsql.Register(cfg.Name, ocsql.WithAllTraceOptions())
+	driverName, err := ocsql.Register(driver, ocsql.WithAllTraceOptions())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Connect to a mysql database using the ocsql driver wrapper.
-	db, err := sql.Open(driverName, u.String())
+	db, err := sql.Open(driverName, connection)
 	if err != nil {
 		return nil, nil, err
 	}
 	// Record DB stats every 5 seconds until we exit.
 	stop := ocsql.RecordStats(db, 5*time.Second)
-	dbx := sqlx.NewDb(db, cfg.Name)
+	dbx := sqlx.NewDb(db, driver)
 
 	close := func() {
 		stop()
