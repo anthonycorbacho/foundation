@@ -27,13 +27,11 @@ func Open(driver, connection string) (*sqlx.DB, func(), error) {
 		if _, err := mysql.ParseDSN(connection); err != nil {
 			return nil, nil, errors.New("invalid mysql connection string")
 		}
-		break
 
 	case "postgres":
 		if _, err := url.Parse(connection); err != nil {
 			return nil, nil, errors.New("invalid postgres connection string")
 		}
-		break
 
 	default:
 		return nil, nil, errors.New("unsupported database driver: " + driver)
