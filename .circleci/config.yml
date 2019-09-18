@@ -5,4 +5,9 @@ jobs:
       - image: circleci/golang:1.13.0
     steps:
       - checkout
-      - run: make test
+      - run:
+          name: Install and run Linter on go files
+          command: make tool && make linter
+      - run:
+        name: run unit tests
+        command: make test
