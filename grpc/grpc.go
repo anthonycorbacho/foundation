@@ -1,8 +1,8 @@
 package grpc
 
 import (
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpcrecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
 )
@@ -11,8 +11,8 @@ import (
 // recover from panic and setup for observability.
 func NewServer(opts ...grpc.ServerOption) *grpc.Server {
 	opts = append(opts,
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(grpc_recovery.StreamServerInterceptor())),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(grpc_recovery.UnaryServerInterceptor())),
+		grpc.StreamInterceptor(grpcmiddleware.ChainStreamServer(grpcrecovery.StreamServerInterceptor())),
+		grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(grpcrecovery.UnaryServerInterceptor())),
 		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
 	)
 	srv := grpc.NewServer(opts...)

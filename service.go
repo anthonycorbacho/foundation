@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/pkg/errors"
 	"github.com/soheilhy/cmux"
 	"go.opencensus.io/plugin/ocgrpc"
@@ -44,6 +45,31 @@ func NewService(addr string, opts ...Option) *Service {
 	return &s
 }
 
+// WithPrometheusExporter creates a new HTTP server that will provide a HTTP endpoint /metrics
+// that will report application metrics.
+// if addr is nil, default binding port will be :9090.
+// will panic if cannot bind http to the addr.
+func (s *Service) WithPrometheusExporter(addr string) {
+	if addr == "" {
+		addr = ":9090"
+	}
+	pe, err := prometheus.NewExporter(prometheus.Options{
+		Namespace: s.name,
+	})
+	if err != nil {
+		panic(err)
+	}
+	// Ensure that we register it as a stats exporter.
+	view.RegisterExporter(pe)
+
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", pe)
+		panic(http.ListenAndServe(addr, mux))
+
+	}()
+}
+
 // Serve starts foundation Service.
 func (s *Service) Serve(grpcsrv *grpc.Server) error {
 	if grpcsrv == nil {
@@ -75,11 +101,17 @@ func (s *Service) Serve(grpcsrv *grpc.Server) error {
 	}()
 
 	// Start HTTP server that will be accepting incoming connections on the listener.
-	// TODO(anthony): add prometheus metrics.
 	// TODO(anthony): add better heath check. you now what, add better support for HTTP.
 	go func() {
 		servemux := http.NewServeMux()
 		servemux.HandleFunc("/_ready", func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, "ok") })
+		_ = view.Register(
+			ochttp.ServerRequestCountView,
+			ochttp.ServerRequestBytesView,
+			ochttp.ServerResponseBytesView,
+			ochttp.ServerLatencyView,
+			ochttp.ServerRequestCountByMethod,
+			ochttp.ServerResponseCountByStatusCode)
 
 		httpsrv := http.Server{
 			Handler: &ochttp.Handler{
