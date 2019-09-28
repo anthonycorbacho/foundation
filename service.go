@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -53,8 +54,10 @@ func (s *Service) WithPrometheusExporter(addr string) {
 	if addr == "" {
 		addr = ":9090"
 	}
+
+	name := sanitizeName(s.name)
 	pe, err := prometheus.NewExporter(prometheus.Options{
-		Namespace: s.name,
+		Namespace: name,
 	})
 	if err != nil {
 		panic(err)
@@ -68,6 +71,11 @@ func (s *Service) WithPrometheusExporter(addr string) {
 		panic(http.ListenAndServe(addr, mux))
 
 	}()
+}
+
+func sanitizeName(name string) string {
+	re := regexp.MustCompile(`\W`)
+	return re.ReplaceAllString(name, "_")
 }
 
 // Serve starts foundation Service.

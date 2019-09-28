@@ -7,9 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
-
 	"contrib.go.opencensus.io/integrations/ocsql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"go.opencensus.io/trace"
 
@@ -19,7 +18,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Open knows how to open a database connection based on the configuration.
+// Open knows how to open a database connection based on the driver and connection string.
 func Open(driver, connection string) (*sqlx.DB, func(), error) {
 	// verify if the driver is supported and valid.
 	switch driver {
