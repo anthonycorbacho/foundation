@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"contrib.go.opencensus.io/exporter/jaeger"
+
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/pkg/errors"
 	"github.com/soheilhy/cmux"
@@ -18,6 +20,7 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/plugin/ochttp/propagation/b3"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/trace"
 	"google.golang.org/grpc"
 )
 
@@ -71,6 +74,39 @@ func (s *Service) WithPrometheusExporter(addr string) {
 		panic(http.ListenAndServe(addr, mux))
 
 	}()
+}
+
+// WithJaegerExporter create a new export that will report trace to the given collector and agent endpoint.
+// if collector and/or agent addr are nil (empty) default address will be used.
+// will panic on error
+func (s *Service) WithJaegerExporter(collectorAddr, agentAddr string, tags ...jaeger.Tag) {
+	if collectorAddr == "" {
+		collectorAddr = "http://127.0.0.1:14268/api/traces"
+	}
+
+	if agentAddr == "" {
+		agentAddr = "127.0.0.1:6831"
+	}
+
+	var tt []jaeger.Tag
+	if tags != nil {
+		tt = append(tt, tags...)
+	}
+	exporter, err := jaeger.NewExporter(jaeger.Options{
+		CollectorEndpoint: collectorAddr,
+		AgentEndpoint:     agentAddr,
+		Process: jaeger.Process{
+			ServiceName: s.name,
+			Tags:        tt,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	trace.RegisterExporter(exporter)
+	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
+
 }
 
 func sanitizeName(name string) string {
