@@ -1,7 +1,6 @@
 package foundation
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -9,16 +8,11 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
-	"time"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
-
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/pkg/errors"
-	"github.com/soheilhy/cmux"
 	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/plugin/ochttp"
-	"go.opencensus.io/plugin/ochttp/propagation/b3"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 	"google.golang.org/grpc"
@@ -128,49 +122,14 @@ func (s *Service) Serve(grpcsrv *grpc.Server) error {
 		return err
 	}
 
-	// Create multiplexer for gRPC and HTTP.
-	mux := cmux.New(l)
-	httpMux := mux.Match(cmux.HTTP1Fast())
-	grpcMux := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-
 	signal.Notify(s.shutdown, os.Interrupt, syscall.SIGTERM)
-
 	// Make a channel to listen for errors coming from the listener. Use a
 	// buffered channel so the goroutine can exit if we don't collect this error.
 	serverErrors := make(chan error, 1)
 
-	// Start gRPC server that will be accepting incoming connections on the listener.
-	go func() {
-		serverErrors <- grpcsrv.Serve(l)
-	}()
-
-	// Start HTTP server that will be accepting incoming connections on the listener.
-	// TODO(anthony): add better heath check. you now what, add better support for HTTP.
-	go func() {
-		servemux := http.NewServeMux()
-		servemux.HandleFunc("/_ready", func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, "ok") })
-		_ = view.Register(
-			ochttp.ServerRequestCountView,
-			ochttp.ServerRequestBytesView,
-			ochttp.ServerResponseBytesView,
-			ochttp.ServerLatencyView,
-			ochttp.ServerRequestCountByMethod,
-			ochttp.ServerResponseCountByStatusCode)
-
-		httpsrv := http.Server{
-			Handler: &ochttp.Handler{
-				Handler:     servemux,
-				Propagation: &b3.HTTPFormat{},
-			},
-			WriteTimeout: 15 * time.Second,
-			ReadTimeout:  15 * time.Second,
-		}
-		serverErrors <- httpsrv.Serve(httpMux)
-	}()
-
 	// Start starts multiplexing the listener.
 	go func() {
-		serverErrors <- mux.Serve()
+		serverErrors <- grpcsrv.Serve(l)
 	}()
 
 	select {
@@ -181,9 +140,7 @@ func (s *Service) Serve(grpcsrv *grpc.Server) error {
 		return errors.Wrap(err, "server error")
 
 	case sig := <-s.shutdown:
-		// Closing all mux and listener.
-		_ = httpMux.Close()
-		_ = grpcMux.Close()
+		// Closing listener.
 		_ = l.Close()
 
 		// Log the status of this shutdown.
