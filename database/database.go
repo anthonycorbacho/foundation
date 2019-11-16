@@ -44,7 +44,7 @@ func Open(driver, connection string) (*sqlx.DB, func(), error) {
 		return nil, nil, err
 	}
 
-	// Connect to a mysql database using the ocsql driver wrapper.
+	// Connect to th database using the ocsql driver wrapper.
 	db, err := sql.Open(driverName, connection)
 	if err != nil {
 		return nil, nil, err

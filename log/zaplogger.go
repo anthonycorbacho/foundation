@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Log is a structure that provide a fast, leveled, structured logging using Uber zap.
+// ZapLogger is a structure that provide a fast, leveled, structured logging using Uber zap.
 // All methods are safe for concurrent use.
 type ZapLogger struct {
 	*zap.Logger

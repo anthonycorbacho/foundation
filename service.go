@@ -100,7 +100,6 @@ func (s *Service) WithJaegerExporter(collectorAddr, agentAddr string, tags ...ja
 
 	trace.RegisterExporter(exporter)
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-
 }
 
 func sanitizeName(name string) string {
