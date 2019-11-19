@@ -1,7 +1,6 @@
 package foundation
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -76,11 +75,11 @@ func (s *Service) WithPrometheusExporter(addr string) {
 // will panic on error
 func (s *Service) WithJaegerExporter(collectorAddr, agentAddr string, sampler trace.Sampler, tags ...jaeger.Tag) {
 	if collectorAddr == "" {
-		collectorAddr = "127.0.0.1:14268"
+		collectorAddr = "http://127.0.0.1:14268/api/traces"
 	}
 
 	if agentAddr == "" {
-		agentAddr = "127.0.0.1:6831"
+		agentAddr = "localhost:6831"
 	}
 
 	var tt []jaeger.Tag
@@ -88,7 +87,7 @@ func (s *Service) WithJaegerExporter(collectorAddr, agentAddr string, sampler tr
 		tt = append(tt, tags...)
 	}
 	exporter, err := jaeger.NewExporter(jaeger.Options{
-		CollectorEndpoint: fmt.Sprintf("http://%s/api/traces", collectorAddr),
+		CollectorEndpoint: collectorAddr,
 		AgentEndpoint:     agentAddr,
 		Process: jaeger.Process{
 			ServiceName: s.name,

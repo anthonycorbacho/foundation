@@ -17,7 +17,7 @@ pb.RegisterXXXXXXServer(srv, &myStruct{})
 // Create foundation service with prometheus and jeager exporter.
 svc := foundation.NewService(":8100", foundation.Name("service_name"))
 svc.WithPrometheusExporter(":8101")
-svc.WithJaegerExporter("localhost:14268", "localhost:6831", trace.AlwaysSample())
+svc.WithJaegerExporter("http://127.0.0.1:14268/api/traces", "localhost:6831", trace.AlwaysSample())
 
 // start the service.
 if err := svc.Serve(srv); err != nil {
