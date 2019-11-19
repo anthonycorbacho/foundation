@@ -70,16 +70,12 @@ func (s *Service) WithPrometheusExporter(addr string) {
 	}()
 }
 
-// WithJaegerExporter create a new export that will report trace to the given collector and agent endpoint.
-// if collector and/or agent addr are nil (empty) default address will be used.
+// WithJaegerExporter create a new export that will report trace to the given collector endpoint.
+// if collector is empty, the default address will be use (http://127.0.0.1:14268/api/traces).
 // will panic on error
-func (s *Service) WithJaegerExporter(collectorAddr, agentAddr string, sampler trace.Sampler, tags ...jaeger.Tag) {
+func (s *Service) WithJaegerExporter(collectorAddr string, sampler trace.Sampler, tags ...jaeger.Tag) {
 	if collectorAddr == "" {
 		collectorAddr = "http://127.0.0.1:14268/api/traces"
-	}
-
-	if agentAddr == "" {
-		agentAddr = "localhost:6831"
 	}
 
 	var tt []jaeger.Tag
@@ -88,7 +84,6 @@ func (s *Service) WithJaegerExporter(collectorAddr, agentAddr string, sampler tr
 	}
 	exporter, err := jaeger.NewExporter(jaeger.Options{
 		CollectorEndpoint: collectorAddr,
-		AgentEndpoint:     agentAddr,
 		Process: jaeger.Process{
 			ServiceName: s.name,
 			Tags:        tt,
