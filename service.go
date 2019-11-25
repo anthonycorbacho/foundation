@@ -1,6 +1,7 @@
 package foundation
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -145,4 +146,16 @@ func (s *Service) Serve(grpcsrv *grpc.Server) error {
 	}
 
 	return nil
+}
+
+// AnnotateError annotates the error to the given span.
+func AnnotateError(span *trace.Span, err error)  {
+	if span == nil || err == nil {
+		return
+	}
+
+	span.Annotate([]trace.Attribute{
+		trace.BoolAttribute("error", true),
+		trace.StringAttribute("verbose", fmt.Sprintf("%+v", err)),
+	}, err.Error())
 }
